@@ -26,4 +26,4 @@ RUN /home/pdraw/bin/repo init -u https://github.com/Parrot-Developers/groundsdk-
 RUN yes "y" | ./build.sh -p groundsdk-linux -t build -j/1
 
 ENTRYPOINT [ "./out/groundsdk-linux/staging/native-wrapper.sh" ]
-CMD ["vmeta-extract", "--help"]
+# CMD ["vmeta-extract", "--help"]
