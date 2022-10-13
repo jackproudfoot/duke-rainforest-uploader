@@ -2,11 +2,16 @@ from metadata.extract import extract_metadata
 from metadata.util import sample_frames
 import argparse
 from pathlib import Path
+from import_media.import_media import import_media
 
 def main(args):
-    video_file = Path.cwd().joinpath(args.filename).resolve()
+    media_file = Path.cwd().joinpath(args.filename).resolve()
 
-    extract_metadata(video_file, debug=True)
+    
+
+    import_media(media_file, debug=False)
+
+    #extract_metadata(media_file, debug=True)
 
     #metadata_file = video_file.with_suffix(video_file.suffix + '.json')
 
