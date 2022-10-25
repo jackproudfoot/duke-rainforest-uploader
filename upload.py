@@ -6,10 +6,9 @@ from import_media.import_media import import_media
 
 def main(args):
     media_file = Path.cwd().joinpath(args.filename).resolve()
-
+    harddrive_path = Path.cwd().joinpath(args.harddrive).resolve()
     
-
-    import_media(media_file, debug=False)
+    import_media(media_file, harddrive_path, debug=False)
 
     #extract_metadata(media_file, debug=True)
 
@@ -23,6 +22,7 @@ if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser(description='Rainforest Xprize Uploader')
 
     arg_parser.add_argument('filename')
+    arg_parser.add_argument('harddrive')
 
     args = arg_parser.parse_args()
 

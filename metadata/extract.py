@@ -34,18 +34,20 @@ def extract_photo_metadata(photo_file, metadata_path = None, debug = False):
                 v = v.decode(errors="replace")
             exif[ExifTags.TAGS[k]] = v
 
-    # Add proper gps tags and make values serializeable
-    old_gps_info = exif['GPSInfo']
-    exif['GPSInfo'] = {}
+    # Parse GPS info if included in the image
+    if 'GPSInfo' in exif.keys():
+        # Add proper gps tags and make values serializeable
+        old_gps_info = exif['GPSInfo']
+        exif['GPSInfo'] = {}
 
-    for k, v in old_gps_info.items():
-        if isinstance(v, TiffImagePlugin.IFDRational):
-            v = float(v)
-        elif isinstance(v, tuple):
-            v = tuple(float(t) if isinstance(t, TiffImagePlugin.IFDRational) else t for t in v)
-        elif isinstance(v, bytes):
-            v = v.decode(errors="replace")
-        exif['GPSInfo'][ExifTags.GPSTAGS.get(k, k)] = v
+        for k, v in old_gps_info.items():
+            if isinstance(v, TiffImagePlugin.IFDRational):
+                v = float(v)
+            elif isinstance(v, tuple):
+                v = tuple(float(t) if isinstance(t, TiffImagePlugin.IFDRational) else t for t in v)
+            elif isinstance(v, bytes):
+                v = v.decode(errors="replace")
+            exif['GPSInfo'][ExifTags.GPSTAGS.get(k, k)] = v
 
     image.close()
 
@@ -84,17 +86,14 @@ def extract_video_metadata(video_file, metadata_path = None, debug = False):
     print('Extracting metadata from video ({}) in ({})'.format(vid, dir))
 
     try:
-        proc = subprocess.run(['sh', './{}'.format(script), dir, vid], stdout=subprocess.PIPE)
+        proc = subprocess.run(['sh', './{}'.format(script), dir, vid], stdout=subprocess.PIPE, check=True)
 
         if debug:
             print(proc.stdout.decode())
 
-        
-
     except subprocess.CalledProcessError as err:
-        print('Failed to extract frame metadata from {}: {}'.format(video_file, err))
-        return
-    
+        raise Exception('Failed to extract frame metadata from {}'.format(video_path))
+
     # Move metadata file if metadata path set
     if (metadata_path != None):
         metadata_dir = pathlib.Path(metadata_path).resolve()
@@ -103,6 +102,6 @@ def extract_video_metadata(video_file, metadata_path = None, debug = False):
         metadata_file = pathlib.Path(video_path.with_suffix(video_path.suffix + '.json'))
         metadata_file.rename(metadata_dir.joinpath(metadata_file.name))
 
-    print('Success!')
+    print('Metadata extracted!')
 
     
