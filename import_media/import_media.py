@@ -171,6 +171,10 @@ def import_media(media_path, harddrive_path, metadata_path = None, debug = False
         print(unsorted_image)
 
 
+    # Import unparsed media
+    for unparsed in unparsed_media:
+        print(unparsed)
+
     # Format tabular output
 
     runs_table = [
