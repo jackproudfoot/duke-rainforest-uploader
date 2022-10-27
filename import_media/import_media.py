@@ -9,13 +9,11 @@ from tabulate import tabulate
 '''
 Import media from an external sd card in standard directory format
 '''
-def import_media(media_path, harddrive_path, metadata_path = None, debug = False):
+def import_media(media_path, harddrive_path, debug = False):
     media_dir = pathlib.Path(media_path)
 
     # Initialize metadata dir
     metadata_dir = media_dir.joinpath('metadata')
-    if (metadata_path != None):
-        metadata_dir = pathlib.Path(metadata_path).resolve()
     metadata_dir.mkdir(parents=True, exist_ok=True)
 
     # Get list of videos and images to import
@@ -135,6 +133,7 @@ def import_media(media_path, harddrive_path, metadata_path = None, debug = False
     for date, date_flights in dateruns.items():
         sorted_flights = sorted(date_flights, key=lambda d: d['start'] if isinstance(d['start'], datetime.datetime) else parser.parse(d['start']))
 
+
         # Do pass in reverse order to avoid overwriting... hopefully
         for index, flight in enumerate(sorted_flights[::-1]):
             flight_num = len(sorted_flights) - index
@@ -148,6 +147,8 @@ def import_media(media_path, harddrive_path, metadata_path = None, debug = False
                     current_flight_dir = harddrive_dir.joinpath(date).joinpath("Flight {}".format(current_flight_num))
 
                     current_flight_dir.rename(current_flight_dir.parent.joinpath("Flight {}".format(flight_num)))
+
+                    flight["prev_flight_num"] = current_flight_num
             # New flight
             else:
                 new_flight_dir = harddrive_dir.joinpath(date).joinpath("Flight {}".format(flight_num))
@@ -163,7 +164,18 @@ def import_media(media_path, harddrive_path, metadata_path = None, debug = False
                 # Import videos and photos
                 for media in flight['media']:
                     print('Importing {}'.format(media))
-                    #copyfile(media, new_flight_dir.joinpath(media.name))
+                    copyfile(media, new_flight_dir.joinpath(media.name))
+
+                    # Copy metadata
+                    media_metadata = metadata_dir.joinpath(media.name).with_suffix(media.suffix + '.json') 
+
+                    flight_metadata_dir = new_flight_dir.joinpath('metadata')
+                    flight_metadata_dir.mkdir(exist_ok=True)
+
+                    copyfile(media_metadata, flight_metadata_dir.joinpath(media.name).with_suffix(media.suffix + '.json'))
+
+            # Set current flight num property in flight
+            flight['current_flight_num'] = flight_num
 
     
     # Import unsorted media
