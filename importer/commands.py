@@ -1,4 +1,5 @@
 import click
+import pathlib
 
 from .import_media import *
 
@@ -8,25 +9,40 @@ def importer():
 
 @importer.command()
 @click.argument('media', type=click.Path(exists=True))
-@click.argument('harddrive', type=click.Path(exists=True))
-def plan(media, harddrive):
-    """Import media from SD card to hard drive"""
-    
+@click.argument('harddrive', type=click.Path(exists=True), envvar='HARD_DRIVE')
+@click.option('-d', '--drone', prompt=True)
+def plan(media, harddrive, drone):
+    """Plan import of media from SD card to hard drive"""
+
+    # Ensure capitalization is correct    
+    drone = drone[0].upper() + drone[1:].lower()
+
+    drone_path = pathlib.Path(harddrive).joinpath('Drones').joinpath(drone)
+
     click.echo(click.style("🦜 Squawk. Generating import plan. Squawk.", fg='cyan'))
     
-    plan = import_plan(media, harddrive)
+    plan = import_plan(media, drone_path)
 
     _print_plan(plan)
 
     click.echo(click.style("🦜 Squawk. Plan is complete. Squawk.", fg='cyan'))
 
+    return plan
+
 @importer.command(name = 'import')
 @click.argument('media', type=click.Path(exists=True))
-@click.argument('harddrive', type=click.Path(exists=True))
-def execute_plan(media, harddrive):
+@click.argument('harddrive', type=click.Path(exists=True), envvar='HARD_DRIVE')
+@click.option('-d', '--drone', prompt=True)
+def execute_plan(media, harddrive, drone):
+    """Import media from SD card to hard drive."""
+
     click.echo(click.style("🦜 Squawk. Importing media. Squawk.", fg='cyan'))
 
-    plan = import_plan(media, harddrive)
+    # Ensure capitalization is correct    
+    drone = drone[0].upper() + drone[1:].lower()
+    drone_path = pathlib.Path(harddrive).joinpath('Drones').joinpath(drone)
+
+    plan = import_plan(media, drone_path)
 
     _print_plan(plan)
 
