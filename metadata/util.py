@@ -12,3 +12,10 @@ def sample_frames(frames, sample_rate = 0.01):
     samples = frames[::sampling_jump]
 
     return samples
+
+'''
+Get standard metadata file from media file path
+'''
+def get_metadata_file(media_file):
+    metadata_file = media_file.parent.joinpath('metadata').joinpath(media_file.name).with_suffix(media_file.suffix + '.json')
+    return metadata_file

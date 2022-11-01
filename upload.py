@@ -2,13 +2,14 @@ from metadata.extract import extract_metadata
 from metadata.util import sample_frames
 import argparse
 from pathlib import Path
-from import_media.import_media import import_media
+from importer.import_media import import_media, import_plan
 
 def main(args):
     media_file = Path.cwd().joinpath(args.filename).resolve()
     harddrive_path = Path.cwd().joinpath(args.harddrive).resolve()
     
-    import_media(media_file, harddrive_path, debug=False)
+    plan = import_plan(media_file, harddrive_path, debug=False)
+    import_media(plan, debug=False)
 
     #extract_metadata(media_file, debug=True)
 
