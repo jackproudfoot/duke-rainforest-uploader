@@ -5,7 +5,7 @@
 
 This tool was born from a desire to have a standarized import process for media coming off of the drones during the xprize competitions. Doing the import and organization by hand took a significant amount of time which is one reason why we decided to build this tool. However, by controlling the media import process we also give ourselves the ability to automatically scrape the metadata from the media files and load that metadata in to a database for later processing. This opens up future oppurtunities for visualization and data processing that was simply not feasible from metadata scraped by hand.
 
-## [Demo Video](https://drive.google.com/drive/folders/1NuhVlFjegUev6aGP1uJieh8IeByeygTf)
+## [Demo Video](https://drive.google.com/file/d/10Q2fOv8EPBd9so0ARPAX5ecKGAuOyCSu/view?usp=share_link)
 
 [Drone Database Project: Overview, Current Status, and Next Steps](https://docs.google.com/document/d/1oMmx3iVq1pmT66SXy0jKGBCzmflcUfHFflUvewBOh3o/view)
 
