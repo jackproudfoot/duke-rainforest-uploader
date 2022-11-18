@@ -154,7 +154,8 @@ def organize_media(media_path, debug = False):
                 'run_id': run_id,
                 'start': start_time,
                 'end': media_end,
-                'media': [video]
+                'media': [video],
+                'drone_id': video_metadata['session']['friendly_name']
             }
         
         else:

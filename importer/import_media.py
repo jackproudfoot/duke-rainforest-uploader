@@ -1,17 +1,22 @@
+import click
 import datetime
 from shutil import copyfile
 from dateutil import parser
 import pathlib
+import geojson
 import json
 from metadata.extract import extract_metadata, organize_media
 from metadata.util import get_metadata_file
+import requests
+from urllib.parse import urljoin
+import os
 from tabulate import tabulate
-
+from metadata.util import sample_frames
 
 '''
 Create plan for importing media from external disk
 '''
-def import_plan(media_path, harddrive_path, debug = False):
+def import_plan(media_path, harddrive_path, pilot, debug = False):
     new_flights, unsorted_media, unparsed_media = organize_media(media_path, debug)
 
     harddrive_dir = pathlib.Path(harddrive_path)
@@ -60,9 +65,10 @@ def import_plan(media_path, harddrive_path, debug = False):
                 plan_item = {
                     'flight_num': flight_num,
                     'type': 'create_flight',
-                    'flight_metadata': {k: str(flight[k]) for k in ('run_id', 'start', 'end')},
+                    'flight_metadata': {k: str(flight[k]) for k in ('run_id', 'start', 'end', 'drone_id')},
                     'new_path': new_flight_dir
                 }
+                plan_item['flight_metadata']['pilot'] = pilot
                 plan['flight'].append(plan_item)
 
                 # Add import media plans for flight media
@@ -71,8 +77,9 @@ def import_plan(media_path, harddrive_path, debug = False):
                     media_plan_item['type'] = 'import_media'
                     media_plan_item['current_path'] = media
                     media_plan_item['new_path'] = new_flight_dir.joinpath(media.name)
+                    media_plan_item['run_id'] = plan_item['flight_metadata']['run_id']
+                    media_plan_item['time'] = plan_item['flight_metadata']['start']
                     plan['media'].append(media_plan_item)
-
                 
 
     
@@ -101,7 +108,7 @@ def import_plan(media_path, harddrive_path, debug = False):
         plan_item['type'] = 'import_media'
         plan_item['skip_metadata'] = True
         plan_item['current_path'] = unparsed
-        plan_item['new_path'] = harddrive_dir.joinpath('unparsed')
+        plan_item['new_path'] = harddrive_dir.joinpath('unparsed').joinpath(unparsed.name)
 
         plan['media'].append(plan_item)
 
@@ -109,6 +116,9 @@ def import_plan(media_path, harddrive_path, debug = False):
 
 
 def import_media(plan, debug = False):
+
+    # dict to store database uids for flights
+    database_uids = {}
 
     # Do one pass over flight plans to rename existing flights to prevent accidental overwriting
     # First pass for existing flights
@@ -133,8 +143,28 @@ def import_media(plan, debug = False):
                 exit(1)
 
             # Create flight metadata file
+
+            flight_metadata = flight_import_plan['flight_metadata']
+
             with open(new_path.joinpath('metadata.json'), 'w') as f:
-                    json.dump(flight_import_plan['flight_metadata'], f)
+                    json.dump(flight_metadata, f)
+
+            # Upload flight metadata to metadata database
+
+            res = requests.post(urljoin(os.environ.get('API_URL'), '/drone/create_flight/'), json={
+                'run_id': flight_metadata['run_id'],
+                'drone_id': flight_metadata['drone_id'],
+                'pilot_name': flight_metadata['pilot'],
+            })
+
+            if (res.status_code != 200 and res.status_code != 201):
+                click.echo(click.style('Error: {}'.format(res.text), fg='red'))
+                exit(1)
+
+            # track mapping of run_id => flight_uid from database
+            database_uids[flight_metadata['run_id']] = json.loads(res.text)['flight_uid']
+
+
 
     # Import plan media
 
@@ -154,6 +184,59 @@ def import_media(plan, debug = False):
             new_metadata_path.parent.mkdir(parents=True, exist_ok=True)
 
             copyfile(current_metadata_path, new_metadata_path)
+
+            # Upload media metadata to metadata database
+            flight_uid = database_uids[media_import_plan['run_id']]
+
+            
+            media_type = pathlib.Path(new_path).suffix.lower()[1:]
+
+            with open(new_metadata_path, 'r') as media_metadata_fd:
+                media_metadata = json.load(media_metadata_fd)
+                
+                # Create geojson data from media
+                geometry = None
+                if media_type == 'jpg':
+                    lat_raw = media_metadata['GPSInfo']['GPSLatitude']
+                    long_raw = media_metadata['GPSInfo']['GPSLongitude']
+
+                    lat = lat_raw[0] + lat_raw[1] / 60 + lat_raw[2] / 3600
+                    long = -long_raw[0] + long_raw[1] / 60 + long_raw[2] / 3600
+
+                    lat *= -1 if media_metadata['GPSInfo']['GPSLatitudeRef'] == 'S' else 1
+                    long *= -1 if media_metadata['GPSInfo']['GPSLatitudeRef'] == 'W' else 1
+
+                    altitude = media_metadata['GPSInfo']['GPSAltitude']
+
+                    geometry = geojson.Point((long, lat, altitude))
+                elif media_type == 'mp4':
+                    frames = sample_frames(media_metadata['frame'])
+
+                    points = []
+
+                    for frame in frames:
+                        frame_metadata = frame['metadata']
+
+                        if 'location' in frame_metadata:
+                            points.append((frame_metadata['location']['longitude'], frame_metadata['location']['latitude'], frame_metadata['location']['altitude']))
+
+                    geometry = geojson.LineString(points)
+
+            
+            # Upload metadata and geojson representation to database
+            res = requests.post(urljoin(os.environ.get('API_URL'), '/drone/create_media/'), json={
+                'flight_uid': flight_uid,
+                'data': [{
+                    'path': str(new_path),
+                    'format': media_type,
+                    'geometry': geojson.dumps(geometry),
+                    'datetime_recorded': media_import_plan['time']
+                }]
+            })
+
+            if (res.status_code != 200 and res.status_code != 201):
+                click.echo(click.style('Error uploading media metadata [{}]: {}'.format(new_metadata_path, res.text), fg='red'))
+
 
 
 
